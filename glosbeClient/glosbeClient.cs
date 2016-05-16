@@ -8,14 +8,23 @@ namespace glosbeClient
 {
     public class GlosbeClient
     {
+        private readonly LimitedSizeDictionary<string, IEnumerable<string>> _knownTranslations = new LimitedSizeDictionary<string, IEnumerable<string>>(1000);
+
         public IEnumerable<string> GetTranslations(string word)
         {
+            if (_knownTranslations.ContainsKey(word))
+            {
+                return _knownTranslations[word];
+            }
             var response = SendRequest(word);
             if (response == null || response.Result != "ok")
             {
                 return new string[] { };
             }
-            return from tuc in response.Tuc where tuc.Phrase != null select tuc.Phrase.Text;
+            var translations = from tuc in response.Tuc where tuc.Phrase != null select tuc.Phrase.Text;
+            var enumerable = translations as string[] ?? translations.ToArray();
+            _knownTranslations.Add(word, enumerable);
+            return enumerable;
         }
 
         public Response SendRequest(string word)
